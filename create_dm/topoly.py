@@ -27,7 +27,7 @@ def main():
         for n in nodes:
             line = '%d %f %f %f\n' % (n[0], n[1], n[2], n[3])
             ofile.write(line)
-        line = '%d 0' % len(facets)
+        line = '%d 0\n' % len(facets)
         ofile.write(line)
         print "Writing facets"
         for f in facets:
