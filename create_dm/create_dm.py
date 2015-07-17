@@ -26,6 +26,34 @@ def create_2dm(nfile, ffile, outfile):
         ofile.write('END')
         print "--DONE--"
 
+def create_3dm(nfile, efile, outfile):
+    print "Reading nodes..."
+    nodes = []
+    with open(nfile) as nf:
+        nf.readline()
+        for line in nf.readlines(): 
+            node = line.split()
+            nodes.append(node)
+    print "Reading elements..."
+    elements = []
+    with open(efile) as ef:
+        ef.readline()
+        for line in ef.readlines():
+            element = line.split()
+            elements.append(element)
+
+    with open(outfile, 'w') as ofile:
+        ofile.write('MESH3D\n')
+        print "Writing nodes"
+        for n in nodes:
+            line = 'ND %s %s %s %s\n' % (n[0], n[1], n[2], n[3])
+            ofile.write(line)
+        print "Writing elements"
+        for e in elements:
+            line = 'E4T %s %s %s %s %s %s\n' % (e[0], e[1], e[2], e[3], e[4], e[5])
+            ofile.write(line)
+        ofile.write('END')
+        print "--DONE--"
 
 def main():
 
@@ -39,7 +67,7 @@ def main():
     parser.add_argument('--2dm', '-2', action='store_true', dest='two_dim',
             required=False, default=False,
             help='Use if you are creating a 2dm')
-    parser.add_argument('--3dm', '-3', action='store_false', dest='three_dim',
+    parser.add_argument('--3dm', '-3', action='store_true', dest='three_dim',
             required=False, default=False,  help='Use if you creating a 3dm')
     parser.add_argument('--out', '-o', action='store', dest='outfile',
             required=True, help='Name of the out file')
