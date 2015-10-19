@@ -8,6 +8,7 @@ import sys
 
 if len(sys.argv) != 3: 
     print "Usage: extract_node_temporal.py <sim_name> <node_to_extract>" 
+    sys.exit()
 
 sim_name = sys.argv[1]
 node = int(sys.argv[2])
