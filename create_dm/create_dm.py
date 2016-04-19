@@ -34,6 +34,7 @@ def create_3dm(nfile, efile, outfile):
         for line in nf.readlines(): 
             node = line.split()
             nodes.append(node)
+        nodes = nodes[:-1]
     print "Reading elements..."
     elements = []
     with open(efile) as ef:
@@ -41,6 +42,7 @@ def create_3dm(nfile, efile, outfile):
         for line in ef.readlines():
             element = line.split()
             elements.append(element)
+        elements = elements[:-1]
 
     with open(outfile, 'w') as ofile:
         ofile.write('MESH3D\n')
@@ -50,7 +52,11 @@ def create_3dm(nfile, efile, outfile):
             ofile.write(line)
         print "Writing elements"
         for e in elements:
-            line = 'E4T %s %s %s %s %s %s\n' % (e[0], e[1], e[2], e[3], e[4], e[5])
+            try:
+                line = 'E4T %s %s %s %s %s %s\n' % (e[0], e[1], e[2], e[3], e[4], e[5])
+            except:
+                line = 'E4T %s %s %s %s %s 1\n' % (e[0], e[1], e[2], e[3],
+                        e[4])
             ofile.write(line)
         ofile.write('END')
         print "--DONE--"
