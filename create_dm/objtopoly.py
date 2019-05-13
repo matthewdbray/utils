@@ -67,7 +67,6 @@ def main():
         ofile.write(line)
         print "Writing facets"
         for f in facets:
-            print f
             ofile.write('1\n')
             num_f = len(f)
             string = "%i " % num_f 
