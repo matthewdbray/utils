@@ -8,7 +8,6 @@ The purpose of this program is to read in 3dm files and change the materials
 in different polygons that we are feeding it.  This could be as simple as a
 parallelepiped (box) or something that looks like a mortar shell.
 
-More shapes will be added as needed.
 """
 
 import argparse
@@ -59,13 +58,19 @@ def points_from_mesh(shapefile):
 
     return points
 
-def bounding_box_points(shapefile, x, y, z, points=None, adj=None):
+def bounding_box_points(shapefile, depth, x, y, z, points=None):
     """
     Loads the shapefile into a numpy array and returns a ccw bounding box
     """
 
     if not points.any():  # Not read in already from a 2dm
         points = np.loadtxt(shapefile, dtype=float)
+
+    # Get the top most part of the 2dm at the 0 point and
+    # then accounting for depth
+    to_zero = np.array((0,0,points[:,2].max()+float(depth)), 
+            dtype=float)
+    points -= to_zero
 
     # Translate the points to where they will be in the mesh
     to_add = np.array((x,y,z),dtype=float)
@@ -80,19 +85,13 @@ def bounding_box_points(shapefile, x, y, z, points=None, adj=None):
     min_z = points[:,2].min()
     max_z = points[:,2].max()
 
-    # Adding the adjustment percentage that you want to increase bbox
-    min_x -= min_x * adj
-    max_x += max_x * adj
-    min_y -= min_y * adj
-    max_y += max_y * adj
-    min_z -= min_z * adj
-    max_z += max_z * adj
-
-
     # Returning min and max for x,y,z
+    bbox = np.array(((min_x, min_y, min_z), (max_x, max_y, max_z)))
+    print 'Bounding box - ' 
+    print bbox
     return points, np.array(((min_x, min_y, min_z), (max_x, max_y, max_z)))
 
-def point_in_3d_poly(node, poly):
+def point_in_3d_poly(x,y,z, poly):
     """
     Seeing if a point is inside a polygon in three dimensions.
     node is a Node class that has an x,y, and z.
@@ -104,7 +103,7 @@ def point_in_3d_poly(node, poly):
     doesn't change then the centroid is inside the convex hull
     """
     hull = ConvexHull(poly)
-    new_pt = np.array([[node.x, node.y, node.z]])
+    new_pt = np.array([[x, y, z]], dtype=float)
     new_pts = np.append(poly, new_pt, axis=0)
     new_hull = ConvexHull(new_pts)
     if list(hull.vertices) == list(new_hull.vertices):
@@ -133,25 +132,20 @@ def build_geometry(mesh):
                 split = line.split()
             if split[0] == "ND":
                 split = [float(x) for x in split if x != "ND"]
-                node = Node(split[1], split[2], split[3], split[0])
+                node = (split[1], split[2], split[3])
                 nodes.append(node)
                 nnodes += 1
             elif split[0] == "E4T":
                 ntets += 1
-                split = [int(x) for x in split if x != "E4T"]
-                tet = Tet(split[1], split[2], split[3], split[4], split[0],
-                        split[5]) # n1, n2, n3, n4, nnum, matnum
-                tets.append(tet)
-
                 if int(split[-1]) > highest_mat_num:
                     highest_mat_num = int(split[-1])
 
     print "There are\n\t{} nodes\n\t{} tets\n\thighest material number is "\
             "{}".format(nnodes, ntets, highest_mat_num)
 
-    return np.array(nodes), np.array(tets),  highest_mat_num
+    return nodes, highest_mat_num
 
-def compute_centroids(nodes, tets, bbox):
+def compute_centroids(mesh, nodes, bbox, highest_mat_num, poly, outfile):
     """
     Computes the centroid for each tet, and also figures out whether it is in
     the bounding box of the pts that you're wanting to change if a bbox is
@@ -159,34 +153,53 @@ def compute_centroids(nodes, tets, bbox):
     """
     print "Computing node values and centroids ... "
 
+    # Opening the outfile for writing
+    ofile = open(outfile, 'w')
+
     tets_bbox = []
 
     min_x, min_y, min_z = bbox[0]
     max_x, max_y, max_z = bbox[1]
 
-    for tet in tets:
-        tet.n1 = nodes[tet.n1-1]
-        tet.n2 = nodes[tet.n2-1]
-        tet.n3 = nodes[tet.n3-1]
-        tet.n4 = nodes[tet.n4-1]
-        # Computing averages
-        cx = np.sum((tet.n1.x, tet.n2.x, tet.n3.x, tet.n4.x), dtype=float) * 0.25
-        cy = np.sum((tet.n1.y, tet.n2.y, tet.n3.y, tet.n4.y), dtype=float) * 0.25
-        cz = np.sum((tet.n1.z, tet.n2.z, tet.n3.z, tet.n4.z), dtype=float) * 0.25
-        cnode = Node(cx, cy, cz, -1)
-        tet.centroid = cnode
+    # Reopening file for another iteration
+    with open(mesh) as infile:
+        for line in infile: 
 
+            foundTet = False
 
-        if min_x <= tet.centroid.x <= max_x:
-            if min_y <= tet.centroid.y <= max_y:
-                if min_z <= tet.centroid.z <= max_z:
-                    tets_bbox.append(tet)
+            if line is not None: 
+                split = line.split()
+                marker = split[0]
+            if marker == "ND": 
+                ofile.write(line) 
+            elif marker == "E4T": 
+                tetline = [int(x) for x in split if x != "E4T"]
+                tnum, n1, n2, n3, n4, mat = tetline
+                n1x, n1y, n1z = nodes[n1-1]
+                n2x, n2y, n2z = nodes[n2-1]
+                n3x, n3y, n3z = nodes[n3-1]
+                n4x, n4y, n4z = nodes[n4-1]
 
-        if len(tets_bbox) == 0:
-            print "There are no tets in the bounding box - error"
-            sys.exit()
+                # Computing averages
+                cx = np.sum((n1x, n2x, n3x, n4x), dtype=float) * 0.25
+                cy = np.sum((n1y, n2y, n3y, n4y), dtype=float) * 0.25
+                cz = np.sum((n1z, n2z, n3z, n4z), dtype=float) * 0.25
 
-    return nodes, tets, np.array(tets_bbox)
+                if min_x <= cx <= max_x: 
+                    if min_y <= cy <= max_y: 
+                        if min_z <= cz <= max_z:
+                            if point_in_3d_poly(cx, cy, cz, poly):
+                                print "Found a tet to change: %d" % tnum
+                                foundTet = True
+                                outline = "E4T %5d %5d %5d %5d %5d %d\n" %\
+                                        (tnum, n1, n2, n3, n4, highest_mat_num+1)
+                                ofile.write(outline)
+                if foundTet is False: 
+                    ofile.write(line)
+            else:
+                ofile.write(line)
+
+    print "--DONE--"
 
 def change_materials(tets, tets_bbox, points, highest_mat_num):
     """
@@ -231,6 +244,8 @@ if __name__ == '__main__':
             dest='shapefile',
             help='This is the file that contains the x,y,z coordinates of '\
                     'the shape that you are wanting to enter into the mesh')
+    parser.add_argument('-d', '--depth', action='store', required=True, 
+            dest='depth', help='This is the depth you want to bury the obj')
     parser.add_argument('-x', action='store', required=True, dest='x',
             help='This is the x location of the object being placed.')
     parser.add_argument('-y', action='store', required=True, dest='y',
@@ -245,6 +260,7 @@ if __name__ == '__main__':
 
     mesh = results.mesh
     shapefile = results.shapefile
+    depth = results.depth
     x = results.x
     y = results.y
     z = results.z
@@ -253,14 +269,14 @@ if __name__ == '__main__':
     ext = shapefile.split('.')[-1]
     if ext == "2dm" or ext == "3dm":
         points = points_from_mesh(shapefile)
-        points, bbox = bounding_box_points(shapefile, x, y, z, points=points,
-                adj=0.05)
+        points, bbox = bounding_box_points(shapefile, depth, x, y, z, 
+                points=points)
     else:
-        points, bbox = bounding_box_points(shapefile, x,y,z)
-    nodes, tets, highest_mat_num = build_geometry(mesh)
-    nodes, tets, tets_bbox = compute_centroids(nodes, tets, bbox)
-    tets = change_materials(tets, tets_bbox, points, highest_mat_num)
-    write_new_3dm(outfile, nodes, tets)
+        points, bbox = bounding_box_points(shapefile, depth, x,y,z)
+    nodes, highest_mat_num = build_geometry(mesh)
+    compute_centroids(mesh, nodes, bbox, highest_mat_num, points, outfile)
+#    tets = change_materials(tets, tets_bbox, points, highest_mat_num)
+#    write_new_3dm(outfile, nodes, tets)
 
 
 

@@ -58,7 +58,7 @@ def points_from_mesh(shapefile):
 
     return points
 
-def bounding_box_points(shapefile, x, y, z, points=None, adj=None):
+def bounding_box_points(shapefile, x, y, z, points=None):
     """
     Loads the shapefile into a numpy array and returns a ccw bounding box
     """
@@ -80,12 +80,12 @@ def bounding_box_points(shapefile, x, y, z, points=None, adj=None):
     max_z = points[:,2].max()
 
     # Adding the adjustment percentage that you want to increase bbox
-    min_x -= min_x * adj
-    max_x += max_x * adj
-    min_y -= min_y * adj
-    max_y += max_y * adj
-    min_z -= min_z * adj
-    max_z += max_z * adj
+#    min_x -= min_x * adj
+#    max_x += max_x * adj
+#    min_y -= min_y * adj
+#    max_y += max_y * adj
+#    min_z -= min_z * adj
+#    max_z += max_z * adj
 
     ## Returning counter clockwise bottom first bounding box (cube)
     #return ((min_x, min_y, min_z), (max_x, min_y, min_z), (max_x, max_y, min_z),
@@ -299,8 +299,7 @@ if __name__ == '__main__':
     with PyCallGraph(output=GraphvizOutput(), config=config):
         if ext == "2dm" or ext == "3dm":
             points = points_from_mesh(shapefile)
-            points, bbox = bounding_box_points(shapefile, x, y, z, points=points,
-                    adj=0.05)
+            points, bbox = bounding_box_points(shapefile, x, y, z, points=points)
         else:
             points, bbox = bounding_box_points(shapefile, x,y,z)
 
