@@ -26,28 +26,34 @@ if __name__ == '__main__':
                         line = line.split()[1:]
                         line = ' '.join(line)
                         nodes.append(line)
-                    elif line_num+1 == nnodes:
+                    elif line_num == nnodes+1:
                         ele_header = line.split()
-                        nelements += ele_header[0]
-                        if ele_header[1] == 1:
+                        nelements += int(ele_header[0])
+                        if int(ele_header[1]) == 1:
                             has_mat = True
                     else:
-                        if line.split()[0] == '3':
+                        if line.split()[0] != '1' and line.split()[0] != '0':
                             if has_mat:
                                 line = line.rstrip('\n')
                                 ele = line.split()[1:-1]
-                                ele = [int(e) + node_offset for e in ele]
+                                try:
+                                    ele = [int(e) + node_offset for e in ele]
+                                except:
+                                    continue
                                 ele.append(mat_num)
                                 ele = [str(e) for e in ele]
-                                ele = '3 ' + ' '.join(ele) 
+                                ele = line.split()[0] + ' ' + ' '.join(ele) 
                                 elements.append(ele)
                             else:
                                 ele = line.rstrip('\n')
                                 ele = ele.split()[1:]
-                                ele = [int(e) + node_offset for e in ele]
-                                ele.append(mat_num)
+                                try:
+                                    ele = [int(e) + node_offset for e in ele]
+                                except:
+                                    continue
+                                #ele.append(mat_num)
                                 ele = [str(e) for e in ele]
-                                ele = '3 ' + ' '.join(ele)
+                                ele = line.split()[0] + ' ' + ' '.join(ele)
                                 elements.append(ele)
                     line_num += 1 
             node_offset += nnodes
@@ -58,7 +64,7 @@ if __name__ == '__main__':
             for i,n in enumerate(nodes): 
                 line = '%d %s\n' % (i+1, n)
                 ofile.write(line)
-            ofile.write('%d 1\n' % len(elements))
+            ofile.write('%d 0\n' % len(elements))
             for e in elements:
                 ofile.write('1\n')
                 ofile.write('%s\n' % e)

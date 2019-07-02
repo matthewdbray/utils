@@ -15,26 +15,18 @@ def create_2dm(nfile, ffile, outfile):
     facets = np.loadtxt(ffile, skiprows=1, dtype=int)
     with open(outfile, 'w') as ofile:
         ofile.write('MESH2D\n')
-        print "Writing nodes"
-        for n in nodes:
-            line = 'ND %d %f %f %f\n' % (n[0], n[1], n[2], n[3])
-            ofile.write(line)
         print "Writing facets"
         for f in facets:
             line = 'E3T %d %d %d %d\n' % (f[0], f[1], f[2], f[3])
+            ofile.write(line)
+        print "Writing nodes"
+        for n in nodes:
+            line = 'ND %d %f %f %f\n' % (n[0], n[1], n[2], n[3])
             ofile.write(line)
         ofile.write('END')
         print "--DONE--"
 
 def create_3dm(nfile, efile, outfile):
-    print "Reading nodes..."
-    nodes = []
-    with open(nfile) as nf:
-        nf.readline()
-        for line in nf.readlines(): 
-            node = line.split()
-            nodes.append(node)
-        nodes = nodes[:-1]
     print "Reading elements..."
     elements = []
     with open(efile) as ef:
@@ -43,13 +35,16 @@ def create_3dm(nfile, efile, outfile):
             element = line.split()
             elements.append(element)
         elements = elements[:-1]
-
+    print "Reading nodes..."
+    nodes = []
+    with open(nfile) as nf:
+        nf.readline()
+        for line in nf.readlines(): 
+            node = line.split()
+            nodes.append(node)
+        nodes = nodes[:-1]
     with open(outfile, 'w') as ofile:
         ofile.write('MESH3D\n')
-        print "Writing nodes"
-        for n in nodes:
-            line = 'ND %s %s %s %s\n' % (n[0], n[1], n[2], n[3])
-            ofile.write(line)
         print "Writing elements"
         for e in elements:
             try:
@@ -57,6 +52,10 @@ def create_3dm(nfile, efile, outfile):
             except:
                 line = 'E4T %s %s %s %s %s 1\n' % (e[0], e[1], e[2], e[3],
                         e[4])
+            ofile.write(line)
+        print "Writing nodes"
+        for n in nodes:
+            line = 'ND %s %s %s %s\n' % (n[0], n[1], n[2], n[3])
             ofile.write(line)
         ofile.write('END')
         print "--DONE--"
